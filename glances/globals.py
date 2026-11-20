@@ -151,7 +151,7 @@ def nativestr(s, errors='replace'):
 def system_exec(command):
     """Execute a system command and return the result as a str"""
     try:
-        res = subprocess.run(command.split(' '), stdout=subprocess.PIPE).stdout.decode('utf-8')
+        res = subprocess.run(command, stdout=subprocess.PIPE, text=True).stdout
     except Exception as e:
         res = f'ERROR: {e}'
     return res.rstrip()
@@ -248,6 +248,8 @@ def enable(class_name, var):
 
 def safe_makedirs(path):
     """A safe function for creating a directory tree."""
+    if path is None or not isinstance(path, str):
+        raise ValueError('Invalid path')
     try:
         os.makedirs(path)
     except OSError as err:
@@ -367,7 +369,7 @@ def json_loads(data: Union[str, bytes, bytearray]) -> Union[dict, list]:
 def list_to_dict(data):
     """Convert a list of dict (with key in 'key') to a dict with key as key and value as value."""
     if not isinstance(data, list):
-        return None
+        return {}
     return {item[item['key']]: item for item in data if 'key' in item}
 
 
@@ -513,6 +515,8 @@ def folder_size(path, errno=0):
     errno: <int> Should always be 0 when calling the function"""
     ret_size = 0
     ret_err = errno
+    if not os.path.isdir(path):
+        return 0, errno
     try:
         for f in os.scandir(path):
             if f.is_dir(follow_symlinks=False) and (f.name != '.' or f.name != '..'):
@@ -591,17 +595,14 @@ def exit_after(seconds, default=None):
     """Exit the function if it takes more than 'seconds' seconds to complete.
     In this case, return the value of 'default' (default: None)."""
 
-    def handler(q, func, args, kwargs):
-        q.put(func(*args, **kwargs))
-
     def decorator(func):
         def wraps(*args, **kwargs):
             q = Queue()
-            p = Process(target=handler, args=(q, func, args, kwargs))
+            p = Process(target=func, args=args, kwargs=kwargs)
             p.start()
             p.join(timeout=seconds)
             if not p.is_alive():
-                return q.get()
+                return p.exitcode
 
             p.terminate()
             p.join(timeout=0.1)
