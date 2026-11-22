@@ -5,26 +5,30 @@ on:
 
 jobs:
   build:
+    # continue-on-error: true
+    timeout-minutes: 10
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     strategy:
       matrix:
-        node-version: [20.x]
+        # Use LTS version only
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        node-version: [24.x]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Glances will be build with Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: ./glances/outputs/static/package-lock.json
     - name: Build Glances WebUI
       working-directory: ./glances/outputs/static
-      # TODO: add the following line when https://github.com/nicolargo/glances/issues/2914 will be solved
-      #  npm audit fix
       run: |
         npm ci
         npm run build
@@ -34,7 +38,21 @@ jobs:
         CI_COMMIT_AUTHOR: Continuous Integration
       run: |
         git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
-        git config --global user.email "username@users.noreply.github.com"
+        git config --global user.email "glances@nicolargo.com"
         git add glances/outputs/static
-        /bin/bash -c "git commit -m '${{ env.CI_COMMIT_MESSAGE }}' || true"
-        git push
+        if git diff --cached --quiet; then
+          echo "No WebUI changes to commit, skipping push."
+          exit 0
+        fi
+        git commit -m "${{ env.CI_COMMIT_MESSAGE }}"
+        for attempt in 1 2 3; do
+          if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then
+            echo "Push succeeded on attempt ${attempt}."
+            exit 0
+          fi
+          echo "Push attempt ${attempt} failed, retrying in $((attempt * 5))s..."
+          git rebase --abort 2>/dev/null || true
+          sleep $((attempt * 5))
+        done
+        echo "Push failed after 3 attempts."
+        exit 1
