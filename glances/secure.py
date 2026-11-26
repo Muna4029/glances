@@ -25,6 +25,10 @@ def secure_popen(cmd):
 
     # Split by multiple commands (only '&&' separator is supported)
     for c in cmd.split('&&'):
+        c = c.strip()
+        # skip empty segments that can appear from extra whitespace or trailing/leading &&
+        if not c:
+            continue
         ret += __secure_popen(c)
 
     return ret

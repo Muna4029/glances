@@ -27,11 +27,9 @@ from glances import __version__
 from glances.events_list import GlancesEventsList
 from glances.filter import GlancesFilter, GlancesFilterList
 from glances.globals import LINUX, WINDOWS, pretty_date, string_value_to_float, subsample
-from glances.main import GlancesMain
 from glances.outputs.glances_bars import Bar
 from glances.plugins.fs.zfs import zfs_enable, zfs_stats
 from glances.plugins.plugin.model import GlancesPluginModel
-from glances.stats import GlancesStats
 from glances.thresholds import (
     GlancesThresholdCareful,
     GlancesThresholdCritical,
@@ -44,12 +42,12 @@ from glances.thresholds import (
 # =================
 
 # Init Glances core
-core = GlancesMain(args_begin_at=2)
-test_config = core.get_config()
-test_args = core.get_args()
+core = None
+test_config = None
+test_args = None
 
 # Init Glances stats
-stats = GlancesStats(config=test_config, args=test_args)
+stats = None
 
 # Unitest class
 # ==============

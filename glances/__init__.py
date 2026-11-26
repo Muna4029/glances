@@ -132,6 +132,9 @@ def start(config, args):
 
     start_duration = Counter()
 
+    # Ensure GlancesMode is always defined and provide a clear error if not
+    GlancesMode = None
+
     if core.is_standalone():
         from glances.standalone import GlancesStandalone as GlancesMode
     elif core.is_client():
@@ -143,6 +146,9 @@ def start(config, args):
         from glances.server import GlancesServer as GlancesMode
     elif core.is_webserver():
         from glances.webserver import GlancesWebServer as GlancesMode
+
+    if GlancesMode is None:
+        raise RuntimeError("Unable to determine Glances mode from the core configuration")
 
     # Init the mode
     logger.info(f"Start {GlancesMode.__name__} mode")
@@ -187,5 +193,4 @@ def main():
     core = GlancesMain()
 
     # Glances can be ran in standalone, client or server mode
-    start(config=core.get_config(), args=core.get_args())
     start(config=core.get_config(), args=core.get_args())
